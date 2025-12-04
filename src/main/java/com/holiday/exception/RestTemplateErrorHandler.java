@@ -14,6 +14,11 @@ public class RestTemplateErrorHandler extends DefaultResponseErrorHandler {
     @Override
     public void handleError(ClientHttpResponse response) throws IOException {
         HttpStatus statusCode = HttpStatus.resolve(response.getStatusCode().value());
+
+        if (statusCode == null) {
+            throw new IOException("알 수 없는 HTTP 상태 코드: " + response.getStatusCode().value());
+        }
+
         String statusText = response.getStatusText();
         byte[] body = getResponseBody(response);
         String bodyText = new String(body, StandardCharsets.UTF_8);

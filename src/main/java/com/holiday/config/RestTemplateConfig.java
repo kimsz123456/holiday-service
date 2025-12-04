@@ -1,35 +1,29 @@
 package com.holiday.config;
 
-import java.net.http.HttpClient;
+import com.holiday.client.NagerApiClient;
 import com.holiday.exception.RestTemplateErrorHandler;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestTemplate;
-
-import java.time.Duration;
 
 @Configuration
 public class RestTemplateConfig {
 
-    @Value("${rest.connect-timeout:3000}")
+    @Value("${rest.template.connect-timeout:3000}")
     private int connectTimeout;
 
-    @Value("${rest.read-timeout:3000}")
+    @Value("${rest.template.read-timeout:3000}")
     private int readTimeout;
+
+    @Value("${nager.api.base-url}")
+    private String nagerApiBaseUrl;
 
     @Bean
     public RestTemplate restTemplate() {
-
-        HttpClient httpClient = HttpClient.newBuilder()
-            .connectTimeout(Duration.ofMillis(connectTimeout))
-            .build();
-
-        HttpComponentsClientHttpRequestFactory factory =
-            new HttpComponentsClientHttpRequestFactory();
-
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
         factory.setConnectTimeout(connectTimeout);
         factory.setReadTimeout(readTimeout);
 
@@ -37,5 +31,10 @@ public class RestTemplateConfig {
             .requestFactory(() -> factory)
             .errorHandler(new RestTemplateErrorHandler())
             .build();
+    }
+
+    @Bean
+    public NagerApiClient nagerApiClient(RestTemplate restTemplate) {
+        return new NagerApiClient(restTemplate, nagerApiBaseUrl);
     }
 }
