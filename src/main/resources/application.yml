@@ -32,5 +32,14 @@ springdoc:
     tags-sorter: alpha
     display-request-duration: true
 
+nager:
+  api:
+    base-url: https://date.nager.at/api/v3
+
+rest:
+  template:
+    connect-timeout: 5000
+    read-timeout: 10000
+
 server:
   port: 8080

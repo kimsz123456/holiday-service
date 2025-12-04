@@ -1,3 +1,6 @@
+import org.example.client.NagerApiClient;
+import org.example.dto.CountryDto;
+import org.example.dto.HolidayDto;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

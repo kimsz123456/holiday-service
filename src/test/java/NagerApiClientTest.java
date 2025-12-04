@@ -1,29 +1,40 @@
+import okhttp3.mockwebserver.MockResponse;
+import okhttp3.mockwebserver.MockWebServer;
+import com.holiday.client.NagerApiClient;
+import com.holiday.dto.CountryDto;
+import com.holiday.dto.HolidayDto;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.client.RestClientTest;
-import org.springframework.http.MediaType;
-import org.springframework.test.web.client.MockRestServiceServer;
+import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDate;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
-import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
-import static org.hamcrest.Matchers.containsString;
 
-@RestClientTest(NagerApiClient.class)
 class NagerApiClientTest {
 
-    @Autowired
+    private MockWebServer mockWebServer;
     private NagerApiClient apiClient;
 
-    @Autowired
-    private MockRestServiceServer mockServer;
+    @BeforeEach
+    void setUp() throws Exception {
+        mockWebServer = new MockWebServer();
+        mockWebServer.start();
+
+        String baseUrl = mockWebServer.url("/").toString();
+
+        apiClient = new NagerApiClient(new RestTemplate(), baseUrl);
+    }
+
+    @AfterEach
+    void tearDown() throws Exception {
+        mockWebServer.shutdown();
+    }
 
     @Test
-    void Country_JSON을_CountryDto로_정상_매핑() {
-        // Given
+    void Country_JSON을_CountryDto로_정상_매핑() throws Exception {
         String jsonResponse = """
             [
                 {"countryCode": "KR", "name": "South Korea"},
@@ -31,21 +42,19 @@ class NagerApiClientTest {
             ]
             """;
 
-        mockServer.expect(requestTo(containsString("/AvailableCountries")))
-            .andRespond(withSuccess(jsonResponse, MediaType.APPLICATION_JSON));
+        mockWebServer.enqueue(new MockResponse()
+            .setBody(jsonResponse)
+            .addHeader("Content-Type", "application/json"));
 
-        // When
         List<CountryDto> result = apiClient.getCountries();
 
-        // Then
         assertThat(result).hasSize(2);
         assertThat(result.get(0).getCountryCode()).isEqualTo("KR");
         assertThat(result.get(0).getName()).isEqualTo("South Korea");
     }
 
     @Test
-    void Holiday_JSON을_HolidayDto로_정상_매핑() {
-        // Given
+    void Holiday_JSON을_HolidayDto로_정상_매핑() throws Exception {
         String jsonResponse = """
             [{
                 "date": "2025-01-01",
@@ -60,13 +69,12 @@ class NagerApiClientTest {
             }]
             """;
 
-        mockServer.expect(requestTo(containsString("/PublicHolidays/2025/KR")))
-            .andRespond(withSuccess(jsonResponse, MediaType.APPLICATION_JSON));
+        mockWebServer.enqueue(new MockResponse()
+            .setBody(jsonResponse)
+            .addHeader("Content-Type", "application/json"));
 
-        // When
         List<HolidayDto> result = apiClient.getHolidays(2025, "KR");
 
-        // Then
         assertThat(result).hasSize(1);
         HolidayDto dto = result.get(0);
         assertThat(dto.getDate()).isEqualTo(LocalDate.of(2025, 1, 1));
