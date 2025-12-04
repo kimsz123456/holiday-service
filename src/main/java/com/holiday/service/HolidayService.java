@@ -10,6 +10,8 @@ import com.holiday.entity.HolidayId;
 import com.holiday.repository.CountryRepository;
 import com.holiday.repository.HolidayRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -82,5 +84,32 @@ public class HolidayService {
         }
 
         return countryHolidays;
+    }
+
+    public Page<HolidayDto> searchHolidaysWithFilters(
+        Integer year,
+        String countryCode,
+        java.time.LocalDate fromDate,
+        java.time.LocalDate toDate,
+        Pageable pageable
+    ) {
+        if (fromDate != null && fromDate.getYear() != year) {
+            throw new IllegalArgumentException(
+                String.format("검색 시작일의 연도(%d)가 선택한 연도(%d)와 일치하지 않습니다.", fromDate.getYear(), year)
+            );
+        }
+
+        if (toDate != null && toDate.getYear() != year) {
+            throw new IllegalArgumentException(
+                String.format("검색 종료일의 연도(%d)가 선택한 연도(%d)와 일치하지 않습니다.", toDate.getYear(), year)
+            );
+        }
+
+        if (fromDate != null && toDate != null && fromDate.isAfter(toDate)) {
+            throw new IllegalArgumentException("검색 시작일이 종료일보다 늦을 수 없습니다.");
+        }
+        Page<Holiday> holidays = holidayRepository.searchWithFilters(year, countryCode, fromDate,
+            toDate, pageable);
+        return holidays.map(holiday -> new HolidayDto(holiday));
     }
 }
