@@ -1,9 +1,15 @@
 package com.holiday.entity;
 
+import jakarta.persistence.Embeddable;
 import java.io.Serializable;
 import java.time.LocalDate;
 import java.util.Objects;
+import lombok.Getter;
+import lombok.Setter;
 
+@Embeddable
+@Getter
+@Setter
 public class HolidayId implements Serializable {
 
     private LocalDate date;
