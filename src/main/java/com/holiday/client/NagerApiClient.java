@@ -19,7 +19,7 @@ public class NagerApiClient {
     }
 
     public List<CountryDto> getCountries() {
-        String url = baseUrl + "AvailableCountries";
+        String url = baseUrl + "/AvailableCountries";
 
         ResponseEntity<List<CountryDto>> response = restTemplate.exchange(
             url,
@@ -33,7 +33,7 @@ public class NagerApiClient {
     }
 
     public List<HolidayDto> getHolidays(int year, String countryCode) {
-        String url = baseUrl + "PublicHolidays/" + year + "/" + countryCode;
+        String url = baseUrl + "/PublicHolidays/" + year + "/" + countryCode;
 
         ResponseEntity<List<HolidayDto>> response = restTemplate.exchange(
             url,
