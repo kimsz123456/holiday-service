@@ -12,6 +12,7 @@ import com.holiday.entity.HolidayId;
 import com.holiday.repository.CountryRepository;
 import com.holiday.repository.HolidayRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -24,6 +25,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class HolidayService {
@@ -33,29 +35,25 @@ public class HolidayService {
     private final NagerApiClient nagerApiClient;
 
     public InitResponseDto initHolidays() {
+        log.info("공휴일 데이터 초기 적재 시작");
         int startYear = 2021;
         int endYear = 2025;
         int totalYears = endYear - startYear + 1;
 
         List<CountryDto> countries = nagerApiClient.getCountries();
+        log.info("{}개 국가의 공휴일 데이터 수집 시작 ({}~{})", countries.size(), startYear, endYear);
 
         List<Holiday> allHolidays = countries.parallelStream()
             .flatMap(countryDto -> processCountry(countryDto, startYear, endYear).stream())
             .toList();
 
         holidayRepository.saveAll(allHolidays);
-
-        InitResponseDto.InitData data = InitResponseDto.InitData.builder()
-            .totalCountries(countries.size())
-            .totalYears(totalYears)
-            .totalRecords(allHolidays.size())
-            .processedAt(LocalDateTime.now())
-            .build();
+        log.info("총 {}개의 공휴일 데이터 저장 완료 - 국가: {}, 연도: {}, 레코드: {}",
+            allHolidays.size(), countries.size(), totalYears, allHolidays.size());
 
         return InitResponseDto.builder()
             .status("SUCCESS")
             .message("데이터 적재 완료")
-            .data(data)
             .build();
     }
 
@@ -124,13 +122,18 @@ public class HolidayService {
 
     @Transactional
     public RefreshResponseDto refreshHolidays(Integer year, String countryCode) {
+        log.info("공휴일 재동기화 시작 - year: {}, countryCode: {}", year, countryCode);
+
         List<Holiday> existingHolidays = holidayRepository.findByYearAndCountryCode(year,
             countryCode);
+        log.debug("기존 데이터 {}개 조회됨", existingHolidays.size());
+
         Map<HolidayId, Holiday> existingMap = existingHolidays.stream()
             .collect(Collectors.toMap(Holiday::getId, h -> h));
 
         Country country = countryRepository.findById(countryCode)
             .orElseGet(() -> {
+                log.info("국가 정보 없음 - 외부 API에서 조회: {}", countryCode);
                 List<CountryDto> countries = nagerApiClient.getCountries();
                 CountryDto countryDto = countries.stream()
                     .filter(c -> c.getCountryCode().equals(countryCode))
@@ -148,6 +151,7 @@ public class HolidayService {
         if (holidays == null) {
             holidays = new ArrayList<>();
         }
+        log.debug("외부 API에서 {}개 공휴일 데이터 조회됨", holidays.size());
 
         int updatedCount = 0;
         int insertedCount = 0;
@@ -179,24 +183,19 @@ public class HolidayService {
         }
 
         holidayRepository.saveAll(holidayEntities);
-
-        RefreshResponseDto.RefreshData data = RefreshResponseDto.RefreshData.builder()
-            .year(year)
-            .countryCode(countryCode)
-            .updatedRecords(updatedCount)
-            .insertedRecords(insertedCount)
-            .processedAt(LocalDateTime.now())
-            .build();
+        log.info("재동기화 완료 - year: {}, countryCode: {}, updated: {}, inserted: {}",
+            year, countryCode, updatedCount, insertedCount);
 
         return RefreshResponseDto.builder()
             .status("SUCCESS")
             .message("재동기화 완료")
-            .data(data)
             .build();
     }
 
     @Transactional
     public DeleteResponseDto deleteHolidays(Integer year, String countryCode) {
+        log.info("공휴일 삭제 시작 - year: {}, countryCode: {}", year, countryCode);
+
         countryRepository.findById(countryCode)
             .orElseThrow(() -> new IllegalArgumentException("유효하지 않은 국가 코드입니다: " + countryCode));
 
@@ -205,18 +204,12 @@ public class HolidayService {
         int deletedCount = existingHolidays.size();
 
         holidayRepository.deleteByYearAndIdCountryCode(year, countryCode);
-
-        DeleteResponseDto.DeleteData data = DeleteResponseDto.DeleteData.builder()
-            .year(year)
-            .countryCode(countryCode)
-            .deletedRecords(deletedCount)
-            .processedAt(LocalDateTime.now())
-            .build();
+        log.info("공휴일 삭제 완료 - year: {}, countryCode: {}, deleted: {}개",
+            year, countryCode, deletedCount);
 
         return DeleteResponseDto.builder()
             .status("SUCCESS")
             .message("삭제 완료")
-            .data(data)
             .build();
     }
 }

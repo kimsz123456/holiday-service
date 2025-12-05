@@ -15,9 +15,11 @@ import org.springframework.data.domain.Sort;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 import java.time.LocalDate;
 
+@Slf4j
 @Tag(name = "Holiday API", description = "공휴일 정보 관리 API")
 @RestController
 @RequestMapping("/api/holidays")
@@ -29,6 +31,7 @@ public class HolidayController {
     @Operation(summary = "데이터 초기 적재", description = "최근 5년(2021~2025)의 모든 국가 공휴일 데이터를 일괄 적재")
     @PostMapping("/init")
     public InitResponseDto init() {
+        log.info("POST /api/holidays/init - 공휴일 데이터 초기 적재 요청");
         return holidayService.initHolidays();
     }
 
@@ -56,14 +59,15 @@ public class HolidayController {
         @Parameter(description = "페이지 크기")
         @RequestParam(defaultValue = "20") int size
     ) {
+        log.info("GET /api/holidays/search - year: {}, countryCode: {}", year, countryCode);
+
         Sort sort = sortDirection.equalsIgnoreCase("desc")
             ? Sort.by("id.date").descending()
             : Sort.by("id.date").ascending();
 
         Pageable pageable = PageRequest.of(page, size, sort);
 
-        return holidayService.searchHolidaysWithFilters(year, countryCode, fromDate, toDate,
-            pageable);
+        return holidayService.searchHolidaysWithFilters(year, countryCode, fromDate, toDate, pageable);
     }
 
     @Operation(summary = "공휴일 재동기화", description = "특정 연도와 국가의 공휴일 데이터를 외부 API에서 다시 가져와 갱신")
@@ -75,6 +79,7 @@ public class HolidayController {
         @Parameter(description = "국가 코드 (형식: ISO 3166-1 alpha-2)", required = true)
         @RequestParam String countryCode
     ) {
+        log.info("PUT /api/holidays/refresh - year: {}, countryCode: {}", year, countryCode);
         return holidayService.refreshHolidays(year, countryCode);
     }
 
@@ -87,6 +92,7 @@ public class HolidayController {
         @Parameter(description = "국가 코드 (형식: ISO 3166-1 alpha-2)", required = true)
         @RequestParam String countryCode
     ) {
+        log.info("DELETE /api/holidays - year: {}, countryCode: {}", year, countryCode);
         return holidayService.deleteHolidays(year, countryCode);
     }
 }

@@ -53,13 +53,7 @@ Content-Type: application/json
 ```json
 {
   "status": "SUCCESS",
-  "message": "데이터 적재 완료",
-  "data": {
-    "totalCountries": 119,
-    "totalYears": 5,
-    "totalRecords": 8340,
-    "processedAt": "2025-01-15T11:30:00"
-  }
+  "message": "데이터 적재 완료"
 }
 ```
 
@@ -67,6 +61,14 @@ Content-Type: application/json
 
 - `200 OK`: 성공
 - `500 Internal Server Error`: 외부 API 호출 실패
+
+**로그 예시**
+
+```
+공휴일 데이터 초기 적재 시작
+119개 국가의 공휴일 데이터 수집 시작 (2021~2025)
+총 8340개의 공휴일 데이터 저장 완료 - 국가: 119, 연도: 5, 레코드: 8340
+```
 
 ---
 
@@ -189,14 +191,7 @@ Content-Type: application/json
 ```json
 {
   "status": "SUCCESS",
-  "message": "재동기화 완료",
-  "data": {
-    "year": 2025,
-    "countryCode": "KR",
-    "updatedRecords": 15,
-    "insertedRecords": 0,
-    "processedAt": "2025-01-15T11:30:00"
-  }
+  "message": "재동기화 완료"
 }
 ```
 
@@ -206,6 +201,15 @@ Content-Type: application/json
 - `400 Bad Request`: 필수 파라미터 누락
 - `404 Not Found`: 유효하지 않은 국가 코드
 - `500 Internal Server Error`: 외부 API 호출 실패
+
+**로그 예시**
+
+```
+공휴일 재동기화 시작 - year: 2025, countryCode: KR
+기존 데이터 15개 조회됨
+외부 API에서 15개 공휴일 데이터 조회됨
+재동기화 완료 - year: 2025, countryCode: KR, updated: 15, inserted: 0
+```
 
 ---
 
@@ -233,13 +237,7 @@ DELETE /api/holidays?year=2025&countryCode=KR
 ```json
 {
   "status": "SUCCESS",
-  "message": "삭제 완료",
-  "data": {
-    "year": 2025,
-    "countryCode": "KR",
-    "deletedRecords": 15,
-    "processedAt": "2025-01-15T11:30:00"
-  }
+  "message": "삭제 완료"
 }
 ```
 
@@ -248,6 +246,13 @@ DELETE /api/holidays?year=2025&countryCode=KR
 - `200 OK`: 성공
 - `400 Bad Request`: 필수 파라미터 누락
 - `404 Not Found`: 삭제할 데이터가 없음
+
+**로그 예시**
+
+```
+공휴일 삭제 시작 - year: 2025, countryCode: KR
+공휴일 삭제 완료 - year: 2025, countryCode: KR, deleted: 15개
+```
 
 ---
 
@@ -267,8 +272,7 @@ DELETE /api/holidays?year=2025&countryCode=KR
 - **Java**: 21
 - **Spring Boot**: 3.4.0
 - **Spring Data JPA**
--
-    - **Spring Scheduling**: 공휴일 데이터 자동 동기화
+- **Spring Scheduling**: 공휴일 데이터 자동 동기화
 - **H2 Database**
 - **Lombok**
 - **SpringDoc OpenAPI 3**: API 문서 자동화 (Swagger UI)
