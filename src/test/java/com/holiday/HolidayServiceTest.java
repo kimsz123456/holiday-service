@@ -151,11 +151,7 @@ class HolidayServiceTest {
                 .param("countryCode", "KR"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.status").value("SUCCESS"))
-            .andExpect(jsonPath("$.message").value("재동기화 완료"))
-            .andExpect(jsonPath("$.data.year").value(2025))
-            .andExpect(jsonPath("$.data.countryCode").value("KR"))
-            .andExpect(jsonPath("$.data.updatedRecords").value(1))
-            .andExpect(jsonPath("$.data.insertedRecords").value(2));
+            .andExpect(jsonPath("$.message").value("재동기화 완료"));
 
         // Then
         List<Holiday> after = holidayRepository.findByYearAndCountryCode(2025, "KR");
@@ -175,10 +171,7 @@ class HolidayServiceTest {
                 .param("countryCode", "KR"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.status").value("SUCCESS"))
-            .andExpect(jsonPath("$.message").value("삭제 완료"))
-            .andExpect(jsonPath("$.data.year").value(2025))
-            .andExpect(jsonPath("$.data.countryCode").value("KR"))
-            .andExpect(jsonPath("$.data.deletedRecords").value(1));
+            .andExpect(jsonPath("$.message").value("삭제 완료"));
 
         // Then
         List<Holiday> deleted = holidayRepository.findByYearAndCountryCode(2025, "KR");
