@@ -1,6 +1,35 @@
-# holiday-service
+# Holiday Service
 
 ## 빌드 & 실행 방법
+
+### 1. 빌드
+
+```bash
+./gradlew build
+```
+
+### 2. 실행
+
+```bash
+./gradlew bootRun
+```
+
+### 3. 접속 정보
+
+- **API 서버**: http://localhost:8080
+- **Swagger UI**: http://localhost:8080/swagger-ui.html
+- **H2 Console**: http://localhost:8080/h2-console
+    - JDBC URL: `jdbc:h2:mem:testdb`
+    - Username: `sa`
+    - Password: (비어있음)
+
+### 4. 테스트
+
+```bash
+./gradlew clean test
+```
+
+![img.png](img/img.png)
 
 ---
 
@@ -26,10 +55,10 @@ Content-Type: application/json
   "status": "SUCCESS",
   "message": "데이터 적재 완료",
   "data": {
-    "totalCountries": 50,
-    "totalYears": 6,
-    "totalRecords": 3500,
-    "processedAt": "2025-01-15T10:30:00"
+    "totalCountries": 119,
+    "totalYears": 5,
+    "totalRecords": 8340,
+    "processedAt": "2025-01-15T11:30:00"
   }
 }
 ```
@@ -71,46 +100,57 @@ GET /api/holidays?year=2025&countryCode=KR&dateFrom=2025-01-01&dateTo=2025-12-31
 {
   "content": [
     {
-      "id": 1,
       "date": "2025-01-01",
-      "localName": "신정",
+      "localName": "새해",
       "name": "New Year's Day",
-      "countryCode": "KR",
-      "fixed": true,
-      "global": true,
-      "year": 2025
-    },
-    {
-      "id": 2,
-      "date": "2025-01-28",
-      "localName": "설날",
-      "name": "Korean New Year",
       "countryCode": "KR",
       "fixed": false,
       "global": true,
-      "year": 2025
+      "counties": null,
+      "types": [
+        "Public"
+      ]
+    },
+    {
+      "date": "2025-01-28",
+      "localName": "설날",
+      "name": "Lunar New Year",
+      "countryCode": "KR",
+      "fixed": false,
+      "global": true,
+      "counties": null,
+      "types": [
+        "Public"
+      ]
     }
   ],
+  "pageable": {
+    "pageNumber": 0,
+    "pageSize": 2,
+    "sort": {
+      "empty": false,
+      "sorted": true,
+      "unsorted": false
+    },
+    "offset": 0,
+    "paged": true,
+    "unpaged": false
+  },
+  "last": false,
+  "totalPages": 8,
   "totalElements": 15,
-  "totalPages": 1,
-  "number": 0,
-  "size": 20,
   "first": true,
-  "last": true,
+  "size": 2,
+  "number": 0,
+  "sort": {
+    "empty": false,
+    "sorted": true,
+    "unsorted": false
+  },
+  "numberOfElements": 2,
   "empty": false
 }
 ```
-
-### 페이징 응답 구조 설명
-
-- **content**: 실제 데이터 배열
-- **totalElements**: 전체 데이터 개수
-- **totalPages**: 전체 페이지 수
-- **number**: 현재 페이지 번호 (0부터 시작)
-- **size**: 페이지 크기
-- **first**: 첫 페이지 여부
-- **last**: 마지막 페이지 여부
-- **empty**: 결과가 비어있는지 여부
 
 **Status Code**
 
@@ -154,9 +194,8 @@ Content-Type: application/json
     "year": 2025,
     "countryCode": "KR",
     "updatedRecords": 15,
-    "insertedRecords": 2,
-    "deletedRecords": 1,
-    "processedAt": "2025-01-15T11:00:00"
+    "insertedRecords": 0,
+    "processedAt": "2025-01-15T11:30:00"
   }
 }
 ```
@@ -218,7 +257,19 @@ DELETE /api/holidays?year=2025&countryCode=KR
 {
   "status": "ERROR",
   "message": "에러 메시지",
-  "timestamp": "2025-01-15T11:45:00",
-  "path": "/api/holidays/refresh"
+  "error": "error",
+  "timestamp": "2025-01-15T11:45:00"
 }
 ```
+
+## 기술 스택
+
+- **Java**: 21
+- **Spring Boot**: 3.4.0
+- **Spring Data JPA**
+-
+    - **Spring Scheduling**: 공휴일 데이터 자동 동기화
+- **H2 Database**
+- **Lombok**
+- **SpringDoc OpenAPI 3**: API 문서 자동화 (Swagger UI)
+- **Gradle**: 빌드 도구
