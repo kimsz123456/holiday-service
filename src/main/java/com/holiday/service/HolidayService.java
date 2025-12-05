@@ -2,8 +2,10 @@ package com.holiday.service;
 
 import com.holiday.client.NagerApiClient;
 import com.holiday.dto.CountryDto;
+import com.holiday.dto.DeleteResponseDto;
 import com.holiday.dto.HolidayDto;
 import com.holiday.dto.InitResponseDto;
+import com.holiday.dto.RefreshResponseDto;
 import com.holiday.entity.Country;
 import com.holiday.entity.Holiday;
 import com.holiday.entity.HolidayId;
@@ -18,6 +20,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -70,14 +75,18 @@ public class HolidayService {
             }
 
             for (HolidayDto holidayDto : holidays) {
-                HolidayId holidayId = new HolidayId(holidayDto.getDate(), country.getCountryCode());
+                HolidayId holidayId = new HolidayId(holidayDto.getDate(), country.getCountryCode(),
+                    holidayDto.getName());
 
                 Holiday holiday = new Holiday();
                 holiday.setId(holidayId);
                 holiday.setLocalName(holidayDto.getLocalName());
-                holiday.setName(holidayDto.getName());
                 holiday.setYear(year);
                 holiday.setCountry(country);
+                holiday.setFixed(holidayDto.getFixed());
+                holiday.setGlobal(holidayDto.getGlobal());
+                holiday.setCounties(holidayDto.getCounties());
+                holiday.setTypes(holidayDto.getTypes());
 
                 countryHolidays.add(holiday);
             }
@@ -111,5 +120,103 @@ public class HolidayService {
         Page<Holiday> holidays = holidayRepository.searchWithFilters(year, countryCode, fromDate,
             toDate, pageable);
         return holidays.map(holiday -> new HolidayDto(holiday));
+    }
+
+    @Transactional
+    public RefreshResponseDto refreshHolidays(Integer year, String countryCode) {
+        List<Holiday> existingHolidays = holidayRepository.findByYearAndCountryCode(year,
+            countryCode);
+        Map<HolidayId, Holiday> existingMap = existingHolidays.stream()
+            .collect(Collectors.toMap(Holiday::getId, h -> h));
+
+        Country country = countryRepository.findById(countryCode)
+            .orElseGet(() -> {
+                List<CountryDto> countries = nagerApiClient.getCountries();
+                CountryDto countryDto = countries.stream()
+                    .filter(c -> c.getCountryCode().equals(countryCode))
+                    .findFirst()
+                    .orElseThrow(
+                        () -> new IllegalArgumentException("유효하지 않은 국가 코드입니다: " + countryCode));
+
+                Country newCountry = new Country();
+                newCountry.setCountryCode(countryDto.getCountryCode());
+                newCountry.setName(countryDto.getName());
+                return countryRepository.save(newCountry);
+            });
+
+        List<HolidayDto> holidays = nagerApiClient.getHolidays(year, countryCode);
+        if (holidays == null) {
+            holidays = new ArrayList<>();
+        }
+
+        int updatedCount = 0;
+        int insertedCount = 0;
+        Set<HolidayId> apiHolidayIds = new java.util.HashSet<>();
+
+        List<Holiday> holidayEntities = new ArrayList<>();
+        for (HolidayDto holidayDto : holidays) {
+            HolidayId holidayId = new HolidayId(holidayDto.getDate(), countryCode,
+                holidayDto.getName());
+            apiHolidayIds.add(holidayId);
+
+            Holiday holiday = new Holiday();
+            holiday.setId(holidayId);
+            holiday.setLocalName(holidayDto.getLocalName());
+            holiday.setYear(year);
+            holiday.setCountry(country);
+            holiday.setFixed(holidayDto.getFixed());
+            holiday.setGlobal(holidayDto.getGlobal());
+            holiday.setCounties(holidayDto.getCounties());
+            holiday.setTypes(holidayDto.getTypes());
+
+            if (existingMap.containsKey(holidayId)) {
+                updatedCount++;
+            } else {
+                insertedCount++;
+            }
+
+            holidayEntities.add(holiday);
+        }
+
+        holidayRepository.saveAll(holidayEntities);
+
+        RefreshResponseDto.RefreshData data = RefreshResponseDto.RefreshData.builder()
+            .year(year)
+            .countryCode(countryCode)
+            .updatedRecords(updatedCount)
+            .insertedRecords(insertedCount)
+            .processedAt(LocalDateTime.now())
+            .build();
+
+        return RefreshResponseDto.builder()
+            .status("SUCCESS")
+            .message("재동기화 완료")
+            .data(data)
+            .build();
+    }
+
+    @Transactional
+    public DeleteResponseDto deleteHolidays(Integer year, String countryCode) {
+        countryRepository.findById(countryCode)
+            .orElseThrow(() -> new IllegalArgumentException("유효하지 않은 국가 코드입니다: " + countryCode));
+
+        List<Holiday> existingHolidays = holidayRepository.findByYearAndCountryCode(year,
+            countryCode);
+        int deletedCount = existingHolidays.size();
+
+        holidayRepository.deleteByYearAndIdCountryCode(year, countryCode);
+
+        DeleteResponseDto.DeleteData data = DeleteResponseDto.DeleteData.builder()
+            .year(year)
+            .countryCode(countryCode)
+            .deletedRecords(deletedCount)
+            .processedAt(LocalDateTime.now())
+            .build();
+
+        return DeleteResponseDto.builder()
+            .status("SUCCESS")
+            .message("삭제 완료")
+            .data(data)
+            .build();
     }
 }

@@ -8,6 +8,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @Data
 @NoArgsConstructor
@@ -27,10 +28,26 @@ public class HolidayDto {
     @JsonProperty("countryCode")
     private String countryCode;
 
+    @JsonProperty("fixed")
+    private Boolean fixed;
+
+    @JsonProperty("global")
+    private Boolean global;
+
+    @JsonProperty("counties")
+    private List<String> counties;
+
+    @JsonProperty("types")
+    private List<String> types;
+
     public HolidayDto(Holiday holiday) {
         this.date = holiday.getId().getDate();
         this.countryCode = holiday.getId().getCountryCode();
         this.localName = holiday.getLocalName();
         this.name = holiday.getName();
+        this.fixed = holiday.getFixed();
+        this.global = holiday.getGlobal();
+        this.counties = holiday.getCounties();
+        this.types = holiday.getTypes();
     }
 }

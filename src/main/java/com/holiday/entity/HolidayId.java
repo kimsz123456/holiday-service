@@ -14,13 +14,15 @@ public class HolidayId implements Serializable {
 
     private LocalDate date;
     private String countryCode;
+    private String name;
 
     public HolidayId() {
     }
 
-    public HolidayId(LocalDate date, String countryCode) {
+    public HolidayId(LocalDate date, String countryCode, String name) {
         this.date = date;
         this.countryCode = countryCode;
+        this.name = name;
     }
 
     @Override
@@ -32,11 +34,12 @@ public class HolidayId implements Serializable {
             return false;
         }
         return Objects.equals(date, that.date) &&
-            Objects.equals(countryCode, that.countryCode);
+            Objects.equals(countryCode, that.countryCode) &&
+            Objects.equals(name, that.name);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(date, countryCode);
+        return Objects.hash(date, countryCode, name);
     }
 }

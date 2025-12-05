@@ -18,8 +18,8 @@ public interface HolidayRepository extends JpaRepository<Holiday, HolidayId> {
         @Param("countryCode") String countryCode);
 
     @Query("SELECT h FROM Holiday h WHERE " +
-        "(:year IS NULL OR h.year = :year) AND " +
-        "(:countryCode IS NULL OR h.id.countryCode = :countryCode) AND " +
+        "(h.year = :year) AND " +
+        "(h.id.countryCode = :countryCode) AND " +
         "(:fromDate IS NULL OR h.id.date >= :fromDate) AND " +
         "(:toDate IS NULL OR h.id.date <= :toDate)")
     Page<Holiday> searchWithFilters(
@@ -30,4 +30,5 @@ public interface HolidayRepository extends JpaRepository<Holiday, HolidayId> {
         Pageable pageable
     );
 
+    void deleteByYearAndIdCountryCode(Integer year, String countryCode);
 }

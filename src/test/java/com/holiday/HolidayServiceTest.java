@@ -1,12 +1,18 @@
+package com.holiday;
+
 import com.holiday.client.NagerApiClient;
 import com.holiday.dto.CountryDto;
 import com.holiday.dto.HolidayDto;
+import com.holiday.entity.Country;
+import com.holiday.entity.Holiday;
+import com.holiday.repository.CountryRepository;
+import com.holiday.repository.HolidayRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,7 +32,7 @@ class HolidayServiceTest {
     @Autowired
     private MockMvc mockMvc;
 
-    @MockBean
+    @MockitoBean
     private NagerApiClient apiClient;
 
     @Autowired
@@ -37,24 +43,30 @@ class HolidayServiceTest {
 
     @BeforeEach
     void setUp() {
-        // Country DTO Mock
         CountryDto korea = new CountryDto("KR", "South Korea");
         CountryDto usa = new CountryDto("US", "United States");
         when(apiClient.getCountries()).thenReturn(List.of(korea, usa));
 
-        // Holiday DTO Mock
         for (int year = 2021; year <= 2025; year++) {
             HolidayDto krHoliday = new HolidayDto();
             krHoliday.setDate(LocalDate.of(year, 1, 1));
             krHoliday.setLocalName("신정");
             krHoliday.setName("New Year");
             krHoliday.setCountryCode("KR");
+            krHoliday.setFixed(true);
+            krHoliday.setGlobal(true);
+            krHoliday.setCounties(null);
+            krHoliday.setTypes(List.of("Public"));
 
             HolidayDto usHoliday = new HolidayDto();
             usHoliday.setDate(LocalDate.of(year, 7, 4));
             usHoliday.setLocalName("Independence Day");
             usHoliday.setName("Independence Day");
             usHoliday.setCountryCode("US");
+            usHoliday.setFixed(true);
+            usHoliday.setGlobal(true);
+            usHoliday.setCounties(null);
+            usHoliday.setTypes(List.of("Public"));
 
             when(apiClient.getHolidays(year, "KR")).thenReturn(List.of(krHoliday));
             when(apiClient.getHolidays(year, "US")).thenReturn(List.of(usHoliday));
@@ -69,13 +81,12 @@ class HolidayServiceTest {
 
         // Then
         assertThat(countryRepository.count()).isEqualTo(2);
-        assertThat(holidayRepository.count()).isEqualTo(10); // 5년 * 2개국 * 1개씩
+        assertThat(holidayRepository.count()).isEqualTo(10);
 
-        // 특정 데이터 검증
         Country savedKorea = countryRepository.findById("KR").orElseThrow();
         assertThat(savedKorea.getName()).isEqualTo("South Korea");
 
-        List<Holiday> kr2025 = holidayRepository.findByYearAndCountryCode("KR", 2025);
+        List<Holiday> kr2025 = holidayRepository.findByYearAndCountryCode(2025, "KR");
         assertThat(kr2025).hasSize(1);
         assertThat(kr2025.get(0).getLocalName()).isEqualTo("신정");
     }
@@ -95,32 +106,61 @@ class HolidayServiceTest {
 
     @Test
     void refresh_데이터_재동기화() throws Exception {
-        // Given
         mockMvc.perform(post("/api/holidays/init"));
 
-        // 새로운 데이터: 기존 1개 갱신, 1개 추가
-        HolidayDto updatedHoliday = new HolidayDto();
-        updatedHoliday.setDate(LocalDate.of(2025, 1, 1)); // 기존 신정 업데이트
-        updatedHoliday.setLocalName("신정(갱신)");
-        updatedHoliday.setName("New Year Updated");
-        updatedHoliday.setCountryCode("KR");
+        List<Holiday> before = holidayRepository.findByYearAndCountryCode(2025, "KR");
+        assertThat(before).hasSize(1);
+        assertThat(before.get(0).getLocalName()).isEqualTo("신정");
 
-        HolidayDto newHoliday = new HolidayDto();
-        newHoliday.setDate(LocalDate.of(2025, 3, 1)); // 새로운 삼일절
-        newHoliday.setLocalName("삼일절");
-        newHoliday.setName("Independence Movement Day");
-        newHoliday.setCountryCode("KR");
+        HolidayDto updatedNewYear = new HolidayDto();
+        updatedNewYear.setDate(LocalDate.of(2025, 1, 1));
+        updatedNewYear.setLocalName("신정(갱신)");
+        updatedNewYear.setName("New Year");
+        updatedNewYear.setCountryCode("KR");
+        updatedNewYear.setFixed(false);
+        updatedNewYear.setGlobal(false);
+        updatedNewYear.setCounties(null);
+        updatedNewYear.setTypes(List.of("Public", "National"));
 
-        when(apiClient.getHolidays(2025, "KR")).thenReturn(List.of(updatedHoliday, newHoliday));
+        HolidayDto lunarNewYear = new HolidayDto();
+        lunarNewYear.setDate(LocalDate.of(2025, 2, 1));
+        lunarNewYear.setLocalName("설날");
+        lunarNewYear.setName("Lunar New Year");
+        lunarNewYear.setCountryCode("KR");
+        lunarNewYear.setFixed(true);
+        lunarNewYear.setGlobal(true);
+        lunarNewYear.setCounties(null);
+        lunarNewYear.setTypes(List.of("Public"));
 
+        HolidayDto independenceDay = new HolidayDto();
+        independenceDay.setDate(LocalDate.of(2025, 3, 1));
+        independenceDay.setLocalName("삼일절");
+        independenceDay.setName("Independence Movement Day");
+        independenceDay.setCountryCode("KR");
+        independenceDay.setFixed(true);
+        independenceDay.setGlobal(true);
+        independenceDay.setCounties(null);
+        independenceDay.setTypes(List.of("Public"));
+
+        when(apiClient.getHolidays(2025, "KR"))
+            .thenReturn(List.of(updatedNewYear, lunarNewYear, independenceDay));
+
+        // When
         mockMvc.perform(put("/api/holidays/refresh")
                 .param("year", "2025")
                 .param("countryCode", "KR"))
-            .andExpect(status().isOk());
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("SUCCESS"))
+            .andExpect(jsonPath("$.message").value("재동기화 완료"))
+            .andExpect(jsonPath("$.data.year").value(2025))
+            .andExpect(jsonPath("$.data.countryCode").value("KR"))
+            .andExpect(jsonPath("$.data.updatedRecords").value(1))
+            .andExpect(jsonPath("$.data.insertedRecords").value(2));
 
-        List<Holiday> kr2025 = holidayRepository.findByYearAndCountryCode("KR", 2025);
-        assertThat(kr2025).hasSize(3);
-        assertThat(kr2025).extracting("localName")
+        // Then
+        List<Holiday> after = holidayRepository.findByYearAndCountryCode(2025, "KR");
+        assertThat(after).hasSize(3);
+        assertThat(after).extracting("localName")
             .containsExactlyInAnyOrder("신정(갱신)", "설날", "삼일절");
     }
 
@@ -133,10 +173,15 @@ class HolidayServiceTest {
         mockMvc.perform(delete("/api/holidays")
                 .param("year", "2025")
                 .param("countryCode", "KR"))
-            .andExpect(status().isOk());
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("SUCCESS"))
+            .andExpect(jsonPath("$.message").value("삭제 완료"))
+            .andExpect(jsonPath("$.data.year").value(2025))
+            .andExpect(jsonPath("$.data.countryCode").value("KR"))
+            .andExpect(jsonPath("$.data.deletedRecords").value(1));
 
         // Then
-        List<Holiday> deleted = holidayRepository.findByYearAndCountryCode("KR", 2025);
+        List<Holiday> deleted = holidayRepository.findByYearAndCountryCode(2025, "KR");
         assertThat(deleted).isEmpty();
     }
 }

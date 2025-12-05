@@ -1,8 +1,9 @@
 package com.holiday.controller;
 
+import com.holiday.dto.DeleteResponseDto;
 import com.holiday.dto.HolidayDto;
 import com.holiday.dto.InitResponseDto;
-import com.holiday.entity.Holiday;
+import com.holiday.dto.RefreshResponseDto;
 import com.holiday.service.HolidayService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -11,13 +12,11 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 import lombok.RequiredArgsConstructor;
 
 import java.time.LocalDate;
-
 
 @Tag(name = "Holiday API", description = "공휴일 정보 관리 API")
 @RestController
@@ -65,5 +64,29 @@ public class HolidayController {
 
         return holidayService.searchHolidaysWithFilters(year, countryCode, fromDate, toDate,
             pageable);
+    }
+
+    @Operation(summary = "공휴일 재동기화", description = "특정 연도와 국가의 공휴일 데이터를 외부 API에서 다시 가져와 갱신")
+    @PutMapping("/refresh")
+    public RefreshResponseDto refresh(
+        @Parameter(description = "연도 (형식: yyyy)", required = true)
+        @RequestParam Integer year,
+
+        @Parameter(description = "국가 코드 (형식: ISO 3166-1 alpha-2)", required = true)
+        @RequestParam String countryCode
+    ) {
+        return holidayService.refreshHolidays(year, countryCode);
+    }
+
+    @Operation(summary = "공휴일 삭제", description = "특정 연도와 국가의 모든 공휴일 데이터를 삭제")
+    @DeleteMapping
+    public DeleteResponseDto delete(
+        @Parameter(description = "연도 (형식: yyyy)", required = true)
+        @RequestParam Integer year,
+
+        @Parameter(description = "국가 코드 (형식: ISO 3166-1 alpha-2)", required = true)
+        @RequestParam String countryCode
+    ) {
+        return holidayService.deleteHolidays(year, countryCode);
     }
 }
