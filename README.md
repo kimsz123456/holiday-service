@@ -206,9 +206,8 @@ Content-Type: application/json
 
 ```
 공휴일 재동기화 시작 - year: 2025, countryCode: KR
-기존 데이터 15개 조회됨
 외부 API에서 15개 공휴일 데이터 조회됨
-재동기화 완료 - year: 2025, countryCode: KR, updated: 15, inserted: 0
+재동기화 완료 - year: 2025, countryCode: KR
 ```
 
 ---

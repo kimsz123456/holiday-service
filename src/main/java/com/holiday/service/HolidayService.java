@@ -124,18 +124,10 @@ public class HolidayService {
     public RefreshResponseDto refreshHolidays(Integer year, String countryCode) {
         log.info("공휴일 재동기화 시작 - year: {}, countryCode: {}", year, countryCode);
 
-        List<Holiday> existingHolidays = holidayRepository.findByYearAndCountryCode(year,
-            countryCode);
-        log.debug("기존 데이터 {}개 조회됨", existingHolidays.size());
-
-        Map<HolidayId, Holiday> existingMap = existingHolidays.stream()
-            .collect(Collectors.toMap(Holiday::getId, h -> h));
-
         Country country = countryRepository.findById(countryCode)
             .orElseGet(() -> {
                 log.info("국가 정보 없음 - 외부 API에서 조회: {}", countryCode);
-                List<CountryDto> countries = nagerApiClient.getCountries();
-                CountryDto countryDto = countries.stream()
+                CountryDto countryDto = nagerApiClient.getCountries().stream()
                     .filter(c -> c.getCountryCode().equals(countryCode))
                     .findFirst()
                     .orElseThrow(
@@ -153,18 +145,9 @@ public class HolidayService {
         }
         log.debug("외부 API에서 {}개 공휴일 데이터 조회됨", holidays.size());
 
-        int updatedCount = 0;
-        int insertedCount = 0;
-        Set<HolidayId> apiHolidayIds = new java.util.HashSet<>();
-
-        List<Holiday> holidayEntities = new ArrayList<>();
-        for (HolidayDto holidayDto : holidays) {
-            HolidayId holidayId = new HolidayId(holidayDto.getDate(), countryCode,
-                holidayDto.getName());
-            apiHolidayIds.add(holidayId);
-
+        List<Holiday> holidayEntities = holidays.stream().map(holidayDto -> {
             Holiday holiday = new Holiday();
-            holiday.setId(holidayId);
+            holiday.setId(new HolidayId(holidayDto.getDate(), countryCode, holidayDto.getName()));
             holiday.setLocalName(holidayDto.getLocalName());
             holiday.setYear(year);
             holiday.setCountry(country);
@@ -172,25 +155,19 @@ public class HolidayService {
             holiday.setGlobal(holidayDto.getGlobal());
             holiday.setCounties(holidayDto.getCounties());
             holiday.setTypes(holidayDto.getTypes());
-
-            if (existingMap.containsKey(holidayId)) {
-                updatedCount++;
-            } else {
-                insertedCount++;
-            }
-
-            holidayEntities.add(holiday);
-        }
+            return holiday;
+        }).toList();
 
         holidayRepository.saveAll(holidayEntities);
-        log.info("재동기화 완료 - year: {}, countryCode: {}, updated: {}, inserted: {}",
-            year, countryCode, updatedCount, insertedCount);
+
+        log.info("재동기화 완료 - year: {}, countryCode: {}", year, countryCode);
 
         return RefreshResponseDto.builder()
             .status("SUCCESS")
             .message("재동기화 완료")
             .build();
     }
+
 
     @Transactional
     public DeleteResponseDto deleteHolidays(Integer year, String countryCode) {
