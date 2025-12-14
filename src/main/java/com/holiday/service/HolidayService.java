@@ -11,6 +11,7 @@ import com.holiday.entity.Holiday;
 import com.holiday.entity.HolidayId;
 import com.holiday.repository.CountryRepository;
 import com.holiday.repository.HolidayRepository;
+import java.util.concurrent.CompletableFuture;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -18,12 +19,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -33,6 +30,8 @@ public class HolidayService {
     private final HolidayRepository holidayRepository;
     private final CountryRepository countryRepository;
     private final NagerApiClient nagerApiClient;
+    private final AsyncService asyncService;
+
 
     public InitResponseDto initHolidays() {
         log.info("공휴일 데이터 초기 적재 시작");
@@ -41,10 +40,27 @@ public class HolidayService {
         int totalYears = endYear - startYear + 1;
 
         List<CountryDto> countries = nagerApiClient.getCountries();
-        log.info("{}개 국가의 공휴일 데이터 수집 시작 ({}~{})", countries.size(), startYear, endYear);
+        log.info("{}개 국가의 공휴일 수집 시작 ({}~{})",
+            countries.size(), startYear, endYear);
 
-        List<Holiday> allHolidays = countries.parallelStream()
-            .flatMap(countryDto -> processCountry(countryDto, startYear, endYear).stream())
+        List<Country> savedCountries = countries.stream()
+            .map(dto -> {
+                Country country = new Country();
+                country.setCountryCode(dto.getCountryCode());
+                country.setName(dto.getName());
+                return country;
+            })
+            .toList();
+
+        countryRepository.saveAll(savedCountries);
+
+        List<CompletableFuture<List<Holiday>>> futures = savedCountries.stream()
+            .map(country -> asyncService.processCountryAsync(country, startYear, endYear))
+            .toList();
+
+        List<Holiday> allHolidays = futures.stream()
+            .map(CompletableFuture::join)
+            .flatMap(List::stream)
             .toList();
 
         holidayRepository.saveAll(allHolidays);
@@ -55,42 +71,6 @@ public class HolidayService {
             .status("SUCCESS")
             .message("데이터 적재 완료")
             .build();
-    }
-
-    @Transactional
-    public List<Holiday> processCountry(CountryDto countryDto, int startYear, int endYear) {
-        Country country = new Country();
-        country.setCountryCode(countryDto.getCountryCode());
-        country.setName(countryDto.getName());
-        countryRepository.save(country);
-
-        List<Holiday> countryHolidays = new ArrayList<>();
-
-        for (int year = startYear; year <= endYear; year++) {
-            List<HolidayDto> holidays = nagerApiClient.getHolidays(year, country.getCountryCode());
-            if (holidays == null) {
-                continue;
-            }
-
-            for (HolidayDto holidayDto : holidays) {
-                HolidayId holidayId = new HolidayId(holidayDto.getDate(), country.getCountryCode(),
-                    holidayDto.getName());
-
-                Holiday holiday = new Holiday();
-                holiday.setId(holidayId);
-                holiday.setLocalName(holidayDto.getLocalName());
-                holiday.setYear(year);
-                holiday.setCountry(country);
-                holiday.setFixed(holidayDto.getFixed());
-                holiday.setGlobal(holidayDto.getGlobal());
-                holiday.setCounties(holidayDto.getCounties());
-                holiday.setTypes(holidayDto.getTypes());
-
-                countryHolidays.add(holiday);
-            }
-        }
-
-        return countryHolidays;
     }
 
     public Page<HolidayDto> searchHolidaysWithFilters(
